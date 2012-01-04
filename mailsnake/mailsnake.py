@@ -21,6 +21,7 @@ class MailSnake(object):
 
         if '-' in self.apikey:
             self.dc = self.apikey.split('-')[1]
+            
 
     def call(self, method, params = {}):
         url = self.base_api_url%{'dc': self.dc, 'method': method}
@@ -44,25 +45,45 @@ class MailSnake(object):
 
 class MailSnakeSTS(MailSnake):
     base_api_url = 'http://%(dc)s.sts.mailchimp.com/1.0/%(method)s'
+#    base_api_url = 'http://127.0.0.1:6666/1.0/%(dc)s/%(method)s'
+    
+    def http_build_query(self, params, key=None):
+        """
+            Stolen from pychimp
+            https://code.google.com/p/pychimp/
+        """ 
+        ret = {}
 
-    def _url_encode(self, data):
-        def _(value):
-            try:
-                val = str(value).encode('utf-8')
-            except:
-                val = value.encode('utf-8')
+        for name, val in params.items():
+            name = name
 
-            return urllib.quote(val)
+            if key is not None and not isinstance(key, int):
+                name = "%s[%s]" % (key, name)
+            if isinstance(val, dict):
+                ret.update(self.http_build_query(val, name))
+            elif isinstance(val, list):
+                ret.update(self.http_build_query(dict(enumerate(val)), name))
+            elif isinstance(val, unicode):
+                ret[name] = val.encode('utf8')
+            elif val is not None:
+                ret[name] = val
 
-        return '&'.join([ v for val in [[ "%s[%s]=%s"%(k,ik, _(iv)) for ik, iv in v.items()] if type(v)==dict else ["%s=%s"%(k,_(v))] for k,v in data.items() ] for v in val ])
+        return ret
 
     def call(self, method, params={}, headers = {}):
         url = self.base_api_url%{'dc': self.dc, 'method': method}
         params.update(self.default_params)
 
-        post_data = self._url_encode(params)
+        post_data = urllib.urlencode(self.http_build_query(params))
         request = urllib2.Request(url, post_data, headers)
-        response = urllib2.urlopen(request)
+        try:
+            response = urllib2.urlopen(request)
+            result = response.read()
+        except urllib2.HTTPError, e:
+            result = e.read()
+            if not 'http_code' in result:
+                raise
 
-        return json.loads(response.read())
+        return json.loads(result)
+
 
