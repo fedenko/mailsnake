@@ -45,7 +45,6 @@ class MailSnake(object):
 
 class MailSnakeSTS(MailSnake):
     base_api_url = 'http://%(dc)s.sts.mailchimp.com/1.0/%(method)s'
-#    base_api_url = 'http://127.0.0.1:6666/1.0/%(dc)s/%(method)s'
     
     def http_build_query(self, params, key=None):
         """
