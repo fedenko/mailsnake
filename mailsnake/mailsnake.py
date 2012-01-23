@@ -30,9 +30,15 @@ class MailSnake(object):
         post_data = urllib2.quote(json.dumps(params))
         headers={'Content-Type': 'application/json'}
         request = urllib2.Request(url, post_data, headers)
-        response = urllib2.urlopen(request)
+        try:
+            response = urllib2.urlopen(request)
+            result = response.read()
+        except urllib2.HTTPError, e:
+            result = e.read()
+            if not 'http_code' in result:
+                raise
 
-        return json.loads(response.read())
+        return json.loads(result)
 
     def __getattr__(self, method_name):
 
